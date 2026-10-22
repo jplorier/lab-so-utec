@@ -26,25 +26,25 @@ locals {
   dominio = "${var.grupo}.${var.dominio_base}"
 }
 
-# module "servicios" {
-#   source = "./modulos/servicios"
-#
-#   nombre            = "lab-${var.grupo}"
-#   vpc_id            = aws_vpc.principal.id
-#   subredes_publicas = aws_subnet.publica[*].id   # [*] = lista con los id de todas las copias
-#   subredes_privadas = aws_subnet.privada[*].id
-#   dominio           = local.dominio            # las reglas del ALB responden a este host
-#   usar_https        = local.hay_certificado    # HTTPS (certificado.tf); false si no hay certs/
-#   certificado_arn   = local.certificado_arn
-#
-#   directorio_sitio = "${path.root}/sitio"
-#
-#   cantidad_tareas       = var.cantidad_tareas
-#   usar_roles_existentes = var.usar_roles_existentes
-#
-#   # Las tareas necesitan la ruta por el NAT para descargar la imagen.
-#   depends_on = [aws_route_table_association.privada]
-# }
+module "servicios" {
+  source = "./modulos/servicios"
+
+  nombre            = "lab-${var.grupo}"
+  vpc_id            = aws_vpc.principal.id
+  subredes_publicas = aws_subnet.publica[*].id # [*] = lista con los id de todas las copias
+  subredes_privadas = aws_subnet.privada[*].id
+  dominio           = local.dominio         # las reglas del ALB responden a este host
+  usar_https        = local.hay_certificado # HTTPS (certificado.tf); false si no hay certs/
+  certificado_arn   = local.certificado_arn
+
+  directorio_sitio = "${path.root}/sitio"
+
+  cantidad_tareas       = var.cantidad_tareas
+  usar_roles_existentes = var.usar_roles_existentes
+
+  # Las tareas necesitan la ruta por el NAT para descargar la imagen.
+  depends_on = [aws_route_table_association.privada]
+}
 
 # --- TODO 3.2: subdominio del grupo en deSEC (EJEMPLO RESUELTO) ----------------
 # El ALB tiene un nombre DNS largo que cambia cada vez que se recrea
