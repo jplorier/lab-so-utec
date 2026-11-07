@@ -59,32 +59,32 @@ module "servicios" {
 # Ese token solo puede escribir el CNAME <grupo>.lab.jplorier.com: si
 # var.grupo no coincide con el nombre que les dio el docente, deSEC lo rechaza.
 #
-# resource "terraform_data" "dns" {
-#   input = {
-#     dominio = var.dominio_base
-#     subname = var.grupo
-#     destino = "${lower(module.servicios.dns_alb)}." # punto final: nombre absoluto
-#     ttl     = 900                                   # 15 min: el mínimo de la zona en deSEC
-#   }
-#
-#   # PUT sobre la lista de registros crea el registro o lo reemplaza.
-#   provisioner "local-exec" {
-#     command = <<-EOT
-#       curl -fsS --retry 5 -X PUT "https://desec.io/api/v1/domains/${self.input.dominio}/rrsets/" \
-#         -H "Authorization: Token $${DESEC_API_TOKEN:?Falta DESEC_API_TOKEN: ejecuten source .env}" \
-#         -H "Content-Type: application/json" \
-#         --data '${jsonencode([{ subname = self.input.subname, type = "CNAME", ttl = self.input.ttl, records = [self.input.destino] }])}'
-#     EOT
-#   }
-#
-#   # Con "records" vacío, deSEC borra el registro (PATCH: no exige el ttl).
-#   provisioner "local-exec" {
-#     when    = destroy
-#     command = <<-EOT
-#       curl -fsS --retry 5 -X PATCH "https://desec.io/api/v1/domains/${self.input.dominio}/rrsets/" \
-#         -H "Authorization: Token $${DESEC_API_TOKEN:?Falta DESEC_API_TOKEN: ejecuten source .env}" \
-#         -H "Content-Type: application/json" \
-#         --data '${jsonencode([{ subname = self.input.subname, type = "CNAME", records = [] }])}'
-#     EOT
-#   }
-# }
+resource "terraform_data" "dns" {
+  input = {
+    dominio = var.dominio_base
+    subname = var.grupo
+    destino = "${lower(module.servicios.dns_alb)}." # punto final: nombre absoluto
+    ttl     = 900                                   # 15 min: el mínimo de la zona en deSEC
+  }
+
+  # PUT sobre la lista de registros crea el registro o lo reemplaza.
+  provisioner "local-exec" {
+    command = <<-EOT
+      curl -fsS --retry 5 -X PUT "https://desec.io/api/v1/domains/${self.input.dominio}/rrsets/" \
+        -H "Authorization: Token $${DESEC_API_TOKEN:?Falta DESEC_API_TOKEN: ejecuten source .env}" \
+        -H "Content-Type: application/json" \
+        --data '${jsonencode([{ subname = self.input.subname, type = "CNAME", ttl = self.input.ttl, records = [self.input.destino] }])}'
+    EOT
+  }
+
+  # Con "records" vacío, deSEC borra el registro (PATCH: no exige el ttl).
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      curl -fsS --retry 5 -X PATCH "https://desec.io/api/v1/domains/${self.input.dominio}/rrsets/" \
+        -H "Authorization: Token $${DESEC_API_TOKEN:?Falta DESEC_API_TOKEN: ejecuten source .env}" \
+        -H "Content-Type: application/json" \
+        --data '${jsonencode([{ subname = self.input.subname, type = "CNAME", records = [] }])}'
+    EOT
+  }
+}

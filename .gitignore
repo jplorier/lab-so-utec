@@ -20,3 +20,5 @@ certs/
 openvpn/salida/
 *.ovpn
 *.key
+*.crt
+*.ovpn
