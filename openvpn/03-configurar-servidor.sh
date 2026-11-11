@@ -46,10 +46,10 @@ echo "net.ipv4.ip_forward = 1" | sudo tee /etc/sysctl.d/90-lab-vpn.conf >/dev/nu
 sudo sysctl -p /etc/sysctl.d/90-lab-vpn.conf
 
 echo "== Configurando NAT con nftables =="
+sudo mkdir -p /etc/nftables
+
 sudo tee /etc/nftables/lab-vpn.nft >/dev/null <<EOF
-# NAT de los clientes VPN hacia la VPC (generado por 03-configurar-servidor.sh)
-table ip lab_vpn
-delete table ip lab_vpn
+# NAT de los clientes VPN hacia la VPC
 table ip lab_vpn {
     chain postrouting {
         type nat hook postrouting priority srcnat; policy accept;
@@ -57,11 +57,13 @@ table ip lab_vpn {
     }
 }
 EOF
+
 if ! sudo grep -q 'lab-vpn.nft' /etc/sysconfig/nftables.conf 2>/dev/null; then
   echo 'include "/etc/nftables/lab-vpn.nft"' | sudo tee -a /etc/sysconfig/nftables.conf >/dev/null
 fi
-sudo systemctl enable --now nftables
-sudo nft -f /etc/nftables/lab-vpn.nft
+
+sudo systemctl enable nftables
+sudo systemctl restart nftables
 
 # Si firewalld estuviera activo, también hay que abrirle el puerto.
 if systemctl is-active --quiet firewalld; then
