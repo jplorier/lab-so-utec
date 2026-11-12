@@ -105,51 +105,56 @@ resource "aws_route_table_association" "publica" {
 #   - ¿Tiene que estar map_public_ip_on_launch? ¿Con qué valor? (el valor por
 #     defecto es false)
 #
-# resource "aws_subnet" "privada" {
-#   count             = 2
-#   vpc_id            = aws_vpc.principal.id
-#   availability_zone = local.azs[count.index]
-#   cidr_block        = cidrsubnet(var.cidr_vpc, 8, ???)
-#   tags              = { Name = "lab-${var.grupo}-privada-${substr(local.azs[count.index], -1, 1)}" }
-# }
+resource "aws_subnet" "privada" {
+  count             = 2
+  vpc_id            = aws_vpc.principal.id
+  availability_zone = local.azs[count.index]
+  cidr_block        = cidrsubnet(var.cidr_vpc, 8, count.index + 10)
+  tags              = { Name = "lab-${var.grupo}-privada-${substr(local.azs[count.index], -1, 1)}" }
+}
 
 # --- TODO 2.2: IP elástica para el NAT --------------------------------------------
 # El NAT Gateway necesita una IP pública fija: una Elastic IP (EIP).
 #
-# resource "aws_eip" "nat" {
-#   domain = "vpc"
-#   tags   = { Name = "lab-${var.grupo}-eip-nat" }
-# }
+resource "aws_eip" "nat" {
+  domain = "vpc"
+  tags   = { Name = "lab-${var.grupo}-eip-nat" }
+}
 
 # --- TODO 2.3: NAT Gateway --------------------------------------------------------
 # Pregunta clave: ¿en qué subred va el NAT, pública o privada? ¿Por qué?
 # El NAT es el recurso MÁS CARO del laboratorio (se cobra por hora aunque no
 # pase tráfico). Usamos uno solo, en la AZ "a". En producción se pone uno por AZ.
 #
-# resource "aws_nat_gateway" "nat" {
-#   allocation_id = aws_eip.nat.id
-#   subnet_id     = ???                    # ej.: aws_subnet.XXXX[0].id
-#   tags          = { Name = "lab-${var.grupo}-nat" }
-#
-#   # Dependencia explícita: el NAT no funciona sin el IGW en la VPC.
-#   depends_on = [aws_internet_gateway.igw]
-# }
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.publica[0].id # ej.: aws_subnet.XXXX[0].id
+  tags          = { Name = "lab-${var.grupo}-nat" }
+
+  # Dependencia explícita: el NAT no funciona sin el IGW en la VPC.
+  depends_on = [aws_internet_gateway.igw]
+}
 
 # --- TODO 2.4: tabla de ruteo privada -------------------------------------------
 # Igual que la pública, pero la ruta por defecto apunta al NAT.
 # Atención: el atributo NO es gateway_id sino nat_gateway_id.
 #
-# resource "aws_route_table" "privada" {
-#   vpc_id = aws_vpc.principal.id
-#
-#   route {
-#     cidr_block     = "0.0.0.0/0"
-#     nat_gateway_id = ???
-#   }
-#
-#   tags = { Name = "lab-${var.grupo}-rt-privada" }
-# }
+resource "aws_route_table" "privada" {
+  vpc_id = aws_vpc.principal.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = { Name = "lab-${var.grupo}-rt-privada" }
+}
 
 # --- TODO 2.5: asociaciones ---------------------------------------------------------
 # Escriban ustedes el recurso aws_route_table_association "privada" para las
 # dos subredes privadas, copiando el modelo de las públicas.
+resource "aws_route_table_association" "privada" {
+  count          = 2
+  subnet_id      = aws_subnet.privada[count.index].id
+  route_table_id = aws_route_table.privada.id
+}
